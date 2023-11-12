@@ -1,0 +1,16 @@
+# Ignore virtual environment files (if you're using virtualenv)
+venv/
+
+# Ignore compiled Python files
+*.pyc
+
+# Ignore IDE and text editor files
+.vscode/
+.idea/
+.vs/
+
+# Ignore sensitive or local configuration files (customize as needed)
+config.ini
+secrets.json
+
+.env
