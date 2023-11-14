@@ -2,6 +2,7 @@ import sys
 import argparse
 import requests
 import json
+from flask import jsonify
 from prettytable import PrettyTable
 
 # Open/Load the JSON file/data into a Python dictionary object
@@ -12,7 +13,7 @@ def load_secrets():
 
 # Initialize headers or add token to header object
 def set_headers(token=None):
-    headers = {"User-Agent": "saved-links by u/djrhernandez"}
+    headers = {"User-Agent": "saved-links app by djrhernandez"}
     if token:
         headers['Authorization'] = "bearer %s" % (token)
     return headers
@@ -56,22 +57,96 @@ def prettify_json(data, wrap_width=50):
     
     print(table)
 
-# API call to GET reddit info
-def get_reddit_api(endpoint, headers):
-    url = "https://oauth.reddit.com/api/v1/%s" % endpoint
-    response = requests.get(url, headers=headers)
+''' API call to GET reddit info
+    Possible endpoints:
+        Links:
+        - POST /api/save
+        - POST /api/unsave
+        Listings:
+        - GET /best
+        - GET /{subreddit}/hot
+        - GET /{subreddit}/sort
+            - /{subreddit}/controversial
+            - /{subreddit}/top
+        Search:
+        - GET /{subreddit}/search
+        Subreddits:
+        - POST /api/search_subreddits
+        - GET /subreddits/popular
+        - GET /subreddits/search
+        Widgets & Wiki:
+        - POST /{subreddit}/api/widget
+        - GET /{subreddit}/api/widgets
+        - GET /{subreddit}/wiki/pages
+'''
+def get_reddit_data(endpoint="", headers=None, params=None):
+    base_url = "https://oauth.reddit.com"
+    url = f"{base_url}/{endpoint}"
 
+    if params:
+        response = requests.get(url, headers=headers, params=params)
+    else:
+        response = requests.get(url, headers=headers)
+        
+    print(f"[GET] - {response.url}")
     if response.status_code == 200:
         results = response.json()
-        prettify_json(results)
-        print(f'GET {url} - {response.reason} [{response.status_code}]')
-    else:
-        print(f"Error fetching data: {response.status_code}")
+        result_data = results['data']['children']
 
-# API call to GET saved posts from Reddit (WIP)
-def get_reddit_saved(headers):
-    # url = "https://oauth.reddit.com/api/v1/me/karma"
-    url = "https://oauth.reddit.com/user/djrhernandez/saved?limit=1"
+        payload = []
+        for item in result_data:
+            data = item['data']
+            print(f"{data}\n\n")
+
+            if data['over_18'] == False or data['thumbnail'] != 'nsfw':
+                reddit_post = {
+                    'author': data['author'],
+                    'author_fullname': data['author_fullname'],
+                    'created': data['created'],
+                    'created_utc': data['created_utc'],
+                    'id': data['id'],
+                    'media': data['media'],
+                    'name': data['name'],
+                    'num_comments': data['num_comments'],
+                    'permalink': data['permalink'],
+                    'score': data['score'],
+                    'subreddit': data['subreddit'],
+                    'subreddit_id': data['subreddit_id'],
+                    'subreddit_name_prefixed': data['subreddit_name_prefixed'],
+                    'thumbnail': data['thumbnail'],
+                    'title': data['title'],
+                    'url': data['url'],
+                }
+                payload.append(reddit_post)
+
+        print(f"Total Count: {len(payload)}")
+        return payload
+    else:
+        return jsonify({'error': 'Failed to fetch data'}), response.status_code
+
+
+
+def post_reddit_data(endpoint="api/search_subreddits", headers=None, params=None):
+    base_url = "https://oauth.reddit.com"
+    url = f"{base_url}/{endpoint}"
+
+    if params:
+        response = requests.post(url, headers=headers, params=params)
+    else:
+        response = requests.post(url, headers=headers)
+        
+    print(f"[POST] - {response.url}")
+    if response.status_code == 200:
+        results = response.json()
+        print(f"{results}")
+        return results
+    else:
+        return jsonify({'error': 'Failed to fetch data'}), response.status_code
+
+
+# Fetch Karma from RedditAPI
+def get_reddit_karma(headers):
+    url = "https://oauth.reddit.com/api/v1/me/karma"
     response = requests.get(url, headers=headers)
     
     if response.status_code == 200:
@@ -80,20 +155,18 @@ def get_reddit_saved(headers):
         print(f'GET {url} - {response.reason} [{response.status_code}]')
         return results
     else:
-        print(f"Error fetching data: {response.status_code}")
-
-
-client_data = load_secrets()
+        return jsonify({'error': 'Failed to fetch data'}), response.status_code
 
 def main():
+    client_data = load_secrets()
+    header_data = set_headers()    
+    post_data = {"grant_type": "password", "username": "djrhernandez"}
+    
     parser = argparse.ArgumentParser()
     parser.add_argument('-at', "--access-token", nargs='?', const=True, help='Request a Reddit access token')
     parser.add_argument('-e', "--endpoint", nargs='?', const=True, help='Endpoint for Reddit\'s API')
-
+    
     args = parser.parse_args()
-
-    header_data = set_headers()    
-    post_data = {"grant_type": "password", "username": "djrhernandez"}
 
     # Send a POST request for a new access token if the argument is provided
     if args.access_token:
@@ -124,10 +197,9 @@ def main():
         header_data = set_headers(client_data['auth_token'])
 
     if args.endpoint:
-        get_reddit_api(args.endpoint, header_data)
+        get_reddit_data(args.endpoint, header_data)
     else: 
-        get_reddit_saved(header_data)
-        # get_reddit_api('me', header_data)
+        get_reddit_karma(header_data)
 
     return 0
 

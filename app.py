@@ -1,30 +1,46 @@
 from flask import Flask
 app = Flask(__name__)
-from reddit_get_me import load_secrets, set_headers, get_reddit_saved, prettify_json
+from reddit import get_reddit_data, load_secrets, set_headers
 
 client_data = load_secrets()
 headers = set_headers(client_data['auth_token'])
 
-@app.route("/")
+
+@app.route("/health_check")
 def sanity():
     return {"health": "OK"}
 
-@app.route("/all_links")
-def all_saved_links():
-    data = get_reddit_saved(headers)
-    results = data['data']['children']
 
-    print(f"--- BIG DOSH RESULTS ---")
-    
-    for item in results:
-        prettify_json(item['data'])
+@app.route("/", methods=['GET'])
+def fetch_saved_links():
+    params = {'limit': '10'}
 
-    print(f"Length: {len(results)}")
-    return results
+    response = get_reddit_data('user/djrhernandez/saved', headers, params)
+    return response
 
-@app.route("/saved")
-def saved_links():
-    return {"health": "OK"}
+
+@app.route('/best', methods=['GET'])
+def fetch_best_posts():
+    params = {
+        'count': '0',
+        'limit': '10',
+        'show': 'all',
+    }
+
+    response = get_reddit_data('best', headers, params)
+    return response
+
+@app.route('/<subreddit>', methods=['GET'])
+def fetch_subreddit_hot(subreddit):
+    params = {
+        'count': '0',
+        'limit': '10',
+        'show': 'all',
+    }
+
+    response = get_reddit_data(f"r/{subreddit}/hot", headers, params)
+    return response
+
 
 if __name__ == "__main__":
     app.run(debug=True)

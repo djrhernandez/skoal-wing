@@ -1,5 +1,6 @@
 # Ignore virtual environment files (if you're using virtualenv)
 venv/
+__pycache__
 
 # Ignore compiled Python files
 *.pyc
@@ -12,7 +13,6 @@ venv/
 # Ignore sensitive or local configuration files (customize as needed)
 config.ini
 secrets.json
+client_secrets.json
 
 .env
-
-client_secrets.json
