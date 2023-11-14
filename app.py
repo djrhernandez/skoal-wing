@@ -30,15 +30,19 @@ def fetch_best_posts():
     response = get_reddit_data('best', headers, params)
     return response
 
-@app.route('/<subreddit>', methods=['GET'])
-def fetch_subreddit_hot(subreddit):
+@app.route('/<subreddit>/', defaults={'where': 'hot'})
+@app.route('/<subreddit>/<where>', methods=['GET'])
+def fetch_subreddit_hot(subreddit, where):
     params = {
         'count': '0',
         'limit': '10',
         'show': 'all',
     }
 
-    response = get_reddit_data(f"r/{subreddit}/hot", headers, params)
+    if where == 'top':
+        params['t'] = 'week'
+
+    response = get_reddit_data(f"r/{subreddit}/{where}", headers, params)
     return response
 
 
